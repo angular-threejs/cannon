@@ -29,7 +29,7 @@ specifiers:
   '@types/three': ^0.148.1
   '@typescript-eslint/eslint-plugin': ^5.36.1
   '@typescript-eslint/parser': ^5.36.1
-  angular-three: ^1.0.1
+  angular-three: ^1.0.2
   cannon-es: ^0.20.0
   cannon-es-debugger: ^1.0.0
   eslint: ~8.15.0
@@ -64,7 +64,7 @@ dependencies:
   '@angular/router': 15.1.1_vfkrm5jz5r53wb6ivhztykwcdi
   '@pmndrs/cannon-worker-api': 2.3.2_three@0.148.0
   '@rx-angular/state': 1.7.0_n3vmsg6ebrf4nd3sigf3m4mk5i
-  angular-three: 1.0.1_jbmw4a6qohvge75o2o7n4up52a
+  angular-three: 1.0.2_jbmw4a6qohvge75o2o7n4up52a
   cannon-es: 0.20.0
   cannon-es-debugger: 1.0.0_ytqjmtckqwtsjebg6ktygbfp7u
   rxjs: 7.5.7
@@ -4072,8 +4072,8 @@ packages:
       uri-js: 4.4.1
     dev: true
 
-  /angular-three/1.0.1_jbmw4a6qohvge75o2o7n4up52a:
-    resolution: {integrity: sha512-xXSMY9uRO/Ae44cR93c8r0fNxDHuXZ1PIf3PT65ZXqprRq9CukqCrv7BsTe1+TV8Ypm2SLszZnVnKFVot80pUA==}
+  /angular-three/1.0.2_jbmw4a6qohvge75o2o7n4up52a:
+    resolution: {integrity: sha512-RlkYnh64tPwej/Yn+2eVs53kZU83L1f756sdPEmfZ+lwJqpq3ua54AfKaKosp1ictupM3pZ7JpyzklOcka08dw==}
     peerDependencies:
       '@angular/common': ^15.1.0
       '@angular/core': ^15.1.0

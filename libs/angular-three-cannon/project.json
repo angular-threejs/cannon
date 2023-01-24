@@ -39,7 +39,12 @@
             "executor": "@nrwl/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
-                "lintFilePatterns": ["libs/angular-three-cannon/**/*.ts", "libs/angular-three-cannon/**/*.html"]
+                "lintFilePatterns": [
+                    "libs/angular-three-cannon/**/*.ts",
+                    "libs/angular-three-cannon/**/*.html",
+                    "libs/angular-three-cannon/services/**/*.ts",
+                    "libs/angular-three-cannon/services/**/*.html"
+                ]
             }
         }
     },
