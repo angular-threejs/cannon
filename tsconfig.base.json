@@ -15,6 +15,7 @@
         "skipDefaultLibCheck": true,
         "baseUrl": ".",
         "paths": {
+            "@cannon/plugin": ["libs/plugin/src/index.ts"],
             "angular-three-cannon": ["libs/angular-three-cannon/src/index.ts"],
             "angular-three-cannon/debug": ["libs/angular-three-cannon/debug/src/index.ts"],
             "angular-three-cannon/services": ["libs/angular-three-cannon/services/src/index.ts"]
