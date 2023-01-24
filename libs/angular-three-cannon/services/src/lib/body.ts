@@ -24,16 +24,7 @@ import {
 import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
-import {
-    BehaviorSubject,
-    combineLatest,
-    concatMap,
-    isObservable,
-    map,
-    Observable,
-    ReplaySubject,
-    takeUntil,
-} from 'rxjs';
+import { combineLatest, isObservable, Observable, of, ReplaySubject, Subscription, switchMap } from 'rxjs';
 import * as THREE from 'three';
 
 export type NgtcAtomicApi<K extends AtomicName> = {
@@ -174,30 +165,45 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     argsFn: NgtcArgFn<TBodyProps['args']>,
     { ref, waitFor }: { ref?: NgtInjectedRef<TObject>; waitFor?: Observable<unknown> } = {}
 ): NgtcBodyReturn<TObject> {
-    const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
-    const physicsStore = inject(NgtcStore, { skipSelf: true });
-    const { destroy$ } = injectNgtDestroy(() => microQueue$.complete());
-    let bodyRef = injectNgtRef<TObject>();
+    let subscription: Subscription | undefined = undefined;
 
+    // a ReplaySubject that would emit once in queueMicrotask call
     const microQueue$ = new ReplaySubject<void>(1);
+    // a ReplaySubject that would emit whenever our props emits. This is done so that the consumers can pass in
+    // Observable to injectBody if they have reactive props (eg: Input)
+    const propsSubject$ = new ReplaySubject<TBodyProps>(1);
+
+    // an array of streams we want to wait to emit until we decide to give the bodyRef an empty Object3D
     const waits$ = [microQueue$] as Observable<unknown>[];
 
-    if (waitFor) {
-        waits$.push(waitFor);
-    }
+    const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
+    const physicsStore = inject(NgtcStore, { skipSelf: true });
 
-    if (ref) {
-        bodyRef = ref;
-    }
+    // clean up our streams on destroy
+    injectNgtDestroy(() => {
+        microQueue$.complete();
+        propsSubject$.complete();
+        subscription?.unsubscribe();
+    });
 
+    // give our bodyRef an NgtInjectedRef
+    let bodyRef = injectNgtRef<TObject>();
+
+    // add waitFor if the consumers pass it in
+    if (waitFor) waits$.push(waitFor);
+    // re-assign bodyRef if the consumers pass a ref in
+    if (ref) bodyRef = ref;
+
+    // fire microQueue$
     queueMicrotask(() => microQueue$.next());
 
-    combineLatest(waits$)
-        .pipe(takeUntil(destroy$))
-        .subscribe(() => (bodyRef.nativeElement ||= new THREE.Object3D() as TObject));
+    // when all waits$ emit, we give bodyRef an empty Object3D if it doesn't have one. Physic Object can still be affected
+    // by Physics without a visual representation
+    combineLatest(waits$).subscribe(() => (bodyRef.nativeElement ||= new THREE.Object3D() as TObject));
 
-    bodyRef.$.pipe(
-        concatMap((object) => {
+    // start the pipeline as soon as bodyRef has a truthy value
+    subscription = bodyRef.$.pipe(
+        switchMap((object) => {
             const { events, refs, worker } = physicsStore.get();
 
             const currentWorker = worker;
@@ -208,31 +214,40 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                 objectCount = object.count;
             }
 
+            // consolidate our uuids into an Array so we can handle them in a more consistent way
             const uuids =
                 object instanceof THREE.InstancedMesh
                     ? new Array(objectCount).fill(0).map((_, i) => `${object.uuid}/${i}`)
                     : [object.uuid];
 
-            return combineLatest(
-                uuids.map((uuid, index) => {
-                    const propsResult = getPropsFn(index);
-                    const propsResult$ = isObservable(propsResult) ? propsResult : new BehaviorSubject(propsResult);
-                    return propsResult$.pipe(
-                        map((props) => {
-                            NgtcUtils.prepare(temp, props);
-                            if (object instanceof THREE.InstancedMesh) {
-                                object.setMatrixAt(index, temp.matrix);
-                                object.instanceMatrix.needsUpdate = true;
-                            }
-                            refs[uuid] = object;
-                            debugApi?.add(uuid, props, type);
-                            NgtcUtils.setupCollision(events, props, uuid);
-                            return { ...props, args: argsFn(props.args) };
-                        }),
-                        takeUntil(destroy$)
-                    );
-                })
-            ).pipe(
+            // construct an Array<Observable> from getPropsFn
+            // so we can react to props changed
+            const propsList$ = uuids.map((uuid, index) => {
+                const propsResult = getPropsFn(index);
+                // TODO  we use a propsSubject$ because we want to ensure this propsResult stream is HOT
+                // otherwise, tapEffect will remove everything from currentWorker#bodies because the stream completes
+                (isObservable(propsResult) ? propsResult : of(propsResult)).subscribe({
+                    next: (props) => {
+                        NgtcUtils.prepare(temp, props);
+                        if (object instanceof THREE.InstancedMesh) {
+                            object.setMatrixAt(index, temp.matrix);
+                            object.instanceMatrix.needsUpdate = true;
+                        }
+                        refs[uuid] = object;
+                        debugApi?.add(uuid, props, type);
+                        NgtcUtils.setupCollision(events, props, uuid);
+                        propsSubject$.next({ ...props, args: argsFn(props.args) });
+                    },
+                    error: (error) => {
+                        console.error(`[NGT Cannon] Error with processing props: ${error}`);
+                        propsSubject$.error(error);
+                    },
+                });
+
+                return propsSubject$;
+            });
+
+            return combineLatest(propsList$).pipe(
                 tapEffect((props) => {
                     currentWorker.addBodies({
                         props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
@@ -244,6 +259,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                         type,
                         uuid: uuids,
                     });
+                    // clean up CannonWorker whenever props changes/completes
                     return () => {
                         uuids.forEach((uuid) => {
                             delete refs[uuid];
@@ -254,8 +270,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                     };
                 })
             );
-        }),
-        takeUntil(destroy$)
+        })
     ).subscribe();
 
     const makeAtomic = <T extends AtomicName>(type: T, index?: number) => {
