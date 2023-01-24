@@ -1,7 +1,15 @@
-# angular-three-cannon
+# Physics utilities for Angular Three using CannonJS
 
-This library was generated with [Nx](https://nx.dev).
+## Installation
 
-## Running unit tests
+```shell
+ng add angular-three-cannon
+```
 
-Run `nx test angular-three-cannon` to execute the unit tests.
+## Documentations
+
+Read more about Angular Three Cannon usages in [TBD: Documentations](#)
+
+## Contributions
+
+Contributions are welcomed
