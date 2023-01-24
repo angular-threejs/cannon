@@ -14,7 +14,9 @@
         "skipLibCheck": true,
         "skipDefaultLibCheck": true,
         "baseUrl": ".",
-        "paths": {}
+        "paths": {
+            "angular-three-cannon": ["libs/angular-three-cannon/src/index.ts"]
+        }
     },
     "exclude": ["node_modules", "tmp"]
 }

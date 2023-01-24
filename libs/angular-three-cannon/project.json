@@ -1,0 +1,47 @@
+{
+    "name": "angular-three-cannon",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "sourceRoot": "libs/angular-three-cannon/src",
+    "prefix": "ngtc",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/angular:package",
+            "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+            "options": {
+                "project": "libs/angular-three-cannon/ng-package.json"
+            },
+            "configurations": {
+                "production": {
+                    "tsConfig": "libs/angular-three-cannon/tsconfig.lib.prod.json"
+                },
+                "development": {
+                    "tsConfig": "libs/angular-three-cannon/tsconfig.lib.json"
+                }
+            },
+            "defaultConfiguration": "production"
+        },
+        "test": {
+            "executor": "@nrwl/jest:jest",
+            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+            "options": {
+                "jestConfig": "libs/angular-three-cannon/jest.config.ts",
+                "passWithNoTests": true
+            },
+            "configurations": {
+                "ci": {
+                    "ci": true,
+                    "codeCoverage": true
+                }
+            }
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["libs/angular-three-cannon/**/*.ts", "libs/angular-three-cannon/**/*.html"]
+            }
+        }
+    },
+    "tags": []
+}
