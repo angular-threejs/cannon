@@ -23,6 +23,7 @@ import {
 } from '@pmndrs/cannon-worker-api';
 import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
+import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
 import {
     animationFrameScheduler,
     combineLatest,
@@ -173,7 +174,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     argsFn: NgtcArgFn<TBodyProps['args']>,
     { ref, waitFor }: { ref?: NgtInjectedRef<TObject>; waitFor?: Observable<unknown> } = {}
 ): NgtcBodyReturn<TObject> {
-    // const debugApi = ({ skipSelf: true, optional: true });
+    const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
     const store = inject(NgtcStore, { skipSelf: true });
     const { destroy$ } = injectNgtDestroy(() => microQueue$.complete());
     let bodyRef = injectNgtRef<TObject>();
@@ -230,7 +231,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                             object.instanceMatrix.needsUpdate = true;
                         }
                         refs[uuid] = object;
-                        //                      debugApi?.add(id, props, type);
+                        debugApi?.add(uuid, props, type);
                         NgtcUtils.setupCollision(events, props, uuid);
                         return { ...props, args: argsFn(props.args) };
                     });
@@ -247,10 +248,10 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                         uuid: uuids,
                     });
                     return () => {
-                        uuids.forEach((id) => {
-                            delete refs[id];
-                            // debugApi?.remove(id);
-                            delete events[id];
+                        uuids.forEach((uuid) => {
+                            delete refs[uuid];
+                            debugApi?.remove(uuid);
+                            delete events[uuid];
                         });
                         currentWorker.removeBodies({ uuid: uuids });
                     };

@@ -43,7 +43,9 @@
                     "libs/angular-three-cannon/**/*.ts",
                     "libs/angular-three-cannon/**/*.html",
                     "libs/angular-three-cannon/services/**/*.ts",
-                    "libs/angular-three-cannon/services/**/*.html"
+                    "libs/angular-three-cannon/services/**/*.html",
+                    "libs/angular-three-cannon/debug/**/*.ts",
+                    "libs/angular-three-cannon/debug/**/*.html"
                 ]
             }
         }
