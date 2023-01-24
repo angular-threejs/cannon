@@ -1,4 +1,3 @@
-import { NgtAnyRecord, NgtRxStore, NgtStore } from 'angular-three';
 import { Component, inject, Input, OnDestroy, OnInit } from '@angular/core';
 import {
     CannonWorkerAPI,
@@ -9,10 +8,10 @@ import {
     WorkerFrameMessage,
     WorkerRayhitEvent,
 } from '@pmndrs/cannon-worker-api';
-import { RxActionFactory } from '@rx-angular/state/actions';
+import { injectBeforeRender, NgtAnyRecord, NgtRxStore, NgtStore } from 'angular-three';
 import { filter } from 'rxjs';
-import { NgtcStore } from './store';
 import * as THREE from 'three';
+import { NgtcStore } from './store';
 
 const v = new THREE.Vector3();
 const s = new THREE.Vector3(1, 1, 1);
@@ -42,11 +41,10 @@ export interface NgtcPhysicsInputs extends CannonWorkerProps {
     selector: 'ngtc-physics',
     standalone: true,
     template: '<ng-content />',
-    providers: [NgtcStore, RxActionFactory],
+    providers: [NgtcStore],
 })
 export class NgtcPhysics extends NgtRxStore<NgtcPhysicsInputs> implements OnInit, OnDestroy {
     private readonly ngtStore = inject(NgtStore);
-    private readonly actions = inject(RxActionFactory<{ setBeforeRender: void }>).create();
     private readonly physicsStore = inject(NgtcStore);
 
     override initialize() {
@@ -135,10 +133,22 @@ export class NgtcPhysics extends NgtRxStore<NgtcPhysicsInputs> implements OnInit
         this.set({ stepSize });
     }
 
+    constructor() {
+        super();
+        let timeSinceLastCalled = 0;
+        injectBeforeRender(({ delta }) => {
+            const { isPaused, maxSubSteps, stepSize } = this.get();
+            const worker = this.physicsStore.get('worker');
+            if (isPaused || !worker) return;
+            timeSinceLastCalled += delta;
+            worker.step({ maxSubSteps, timeSinceLastCalled, stepSize: stepSize! });
+            timeSinceLastCalled = 0;
+        });
+    }
+
     ngOnInit() {
         this.physicsStore.set({ worker: new CannonWorkerAPI(this.get()) });
         this.connectWorker();
-        this.setupBeforeRender();
         this.updateWorkerProp('axisIndex');
         this.updateWorkerProp('broadphase');
         this.updateWorkerProp('gravity');
@@ -153,21 +163,6 @@ export class NgtcPhysics extends NgtRxStore<NgtcPhysicsInputs> implements OnInit
             (worker as unknown as { removeAllListeners: () => void }).removeAllListeners();
         }
         super.ngOnDestroy();
-    }
-
-    private setupBeforeRender() {
-        let timeSinceLastCalled = 0;
-        this.effect(this.actions.setBeforeRender$, () =>
-            this.ngtStore.get('internal').subscribe(({ delta }) => {
-                const { isPaused, maxSubSteps, stepSize } = this.get();
-                const worker = this.physicsStore.get('worker');
-                if (isPaused || !worker) return;
-                timeSinceLastCalled += delta;
-                worker.step({ maxSubSteps, timeSinceLastCalled, stepSize: stepSize! });
-                timeSinceLastCalled = 0;
-            })
-        );
-        this.actions.setBeforeRender();
     }
 
     private connectWorker() {

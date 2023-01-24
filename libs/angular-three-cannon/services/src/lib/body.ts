@@ -25,15 +25,13 @@ import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angul
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
 import {
-    animationFrameScheduler,
+    BehaviorSubject,
     combineLatest,
+    concatMap,
     isObservable,
     map,
     Observable,
-    observeOn,
-    of,
     ReplaySubject,
-    switchMap,
     takeUntil,
 } from 'rxjs';
 import * as THREE from 'three';
@@ -168,6 +166,8 @@ export function injectCompoundBody<TObject extends THREE.Object3D>(
     return injectBody<CompoundBodyProps, TObject>('Compound', fn, (args) => args as unknown[], opts);
 }
 
+const temp = new THREE.Object3D();
+
 function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D>(
     type: BodyShapeType,
     getPropsFn: NgtcGetByIndex<TBodyProps>,
@@ -175,11 +175,10 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     { ref, waitFor }: { ref?: NgtInjectedRef<TObject>; waitFor?: Observable<unknown> } = {}
 ): NgtcBodyReturn<TObject> {
     const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
-    const store = inject(NgtcStore, { skipSelf: true });
+    const physicsStore = inject(NgtcStore, { skipSelf: true });
     const { destroy$ } = injectNgtDestroy(() => microQueue$.complete());
     let bodyRef = injectNgtRef<TObject>();
 
-    const temp = new THREE.Object3D();
     const microQueue$ = new ReplaySubject<void>(1);
     const waits$ = [microQueue$] as Observable<unknown>[];
 
@@ -194,14 +193,12 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     queueMicrotask(() => microQueue$.next());
 
     combineLatest(waits$)
-        .pipe(observeOn(animationFrameScheduler), takeUntil(destroy$))
-        .subscribe(() => {
-            bodyRef.nativeElement ||= new THREE.Object3D() as TObject;
-        });
+        .pipe(takeUntil(destroy$))
+        .subscribe(() => (bodyRef.nativeElement ||= new THREE.Object3D() as TObject));
 
     bodyRef.$.pipe(
-        switchMap((object) => {
-            const { events, refs, worker } = store.get();
+        concatMap((object) => {
+            const { events, refs, worker } = physicsStore.get();
 
             const currentWorker = worker;
             let objectCount = 1;
@@ -217,25 +214,25 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                     : [object.uuid];
 
             return combineLatest(
-                uuids.map((_, index) => {
+                uuids.map((uuid, index) => {
                     const propsResult = getPropsFn(index);
-                    return isObservable(propsResult) ? propsResult : of(propsResult);
+                    const propsResult$ = isObservable(propsResult) ? propsResult : new BehaviorSubject(propsResult);
+                    return propsResult$.pipe(
+                        map((props) => {
+                            NgtcUtils.prepare(temp, props);
+                            if (object instanceof THREE.InstancedMesh) {
+                                object.setMatrixAt(index, temp.matrix);
+                                object.instanceMatrix.needsUpdate = true;
+                            }
+                            refs[uuid] = object;
+                            debugApi?.add(uuid, props, type);
+                            NgtcUtils.setupCollision(events, props, uuid);
+                            return { ...props, args: argsFn(props.args) };
+                        }),
+                        takeUntil(destroy$)
+                    );
                 })
             ).pipe(
-                map((propsList) => {
-                    return uuids.map((uuid, index) => {
-                        const props = propsList[index];
-                        NgtcUtils.prepare(temp, props);
-                        if (object instanceof THREE.InstancedMesh) {
-                            object.setMatrixAt(index, temp.matrix);
-                            object.instanceMatrix.needsUpdate = true;
-                        }
-                        refs[uuid] = object;
-                        debugApi?.add(uuid, props, type);
-                        NgtcUtils.setupCollision(events, props, uuid);
-                        return { ...props, args: argsFn(props.args) };
-                    });
-                }),
                 tapEffect((props) => {
                     currentWorker.addBodies({
                         props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
@@ -255,8 +252,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                         });
                         currentWorker.removeBodies({ uuid: uuids });
                     };
-                }),
-                takeUntil(destroy$)
+                })
             );
         }),
         takeUntil(destroy$)
@@ -267,12 +263,12 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
 
         return {
             set: (value: PropValue<T>) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker[op]({ props: value, uuid } as never);
             },
             get subscribe() {
-                const { subscriptions, worker } = store.get();
+                const { subscriptions, worker } = physicsStore.get();
                 return NgtcUtils.subscribe(bodyRef, worker, subscriptions, type, index);
             },
         };
@@ -282,17 +278,17 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
         const type = 'quaternion';
         return {
             copy: ({ w, x, y, z }: THREE.Quaternion) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.setQuaternion({ props: [x, y, z, w], uuid });
             },
             set: (x: number, y: number, z: number, w: number) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.setQuaternion({ props: [x, y, z, w], uuid });
             },
             get subscribe() {
-                const { subscriptions, worker } = store.get();
+                const { subscriptions, worker } = physicsStore.get();
                 return NgtcUtils.subscribe(bodyRef, worker, subscriptions, type, index);
             },
         };
@@ -301,17 +297,17 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     const makeRotation = (index?: number) => {
         return {
             copy: ({ x, y, z }: THREE.Vector3 | THREE.Euler) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.setRotation({ props: [x, y, z], uuid });
             },
             set: (x: number, y: number, z: number) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.setRotation({ props: [x, y, z], uuid });
             },
             subscribe: (callback: (value: Triplet) => void) => {
-                const { subscriptions, worker } = store.get();
+                const { subscriptions, worker } = physicsStore.get();
                 const id = NgtcUtils.incrementingId++;
                 const target = 'bodies';
                 const type = 'quaternion';
@@ -331,24 +327,24 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
         const op: SetOpName<VectorName> = `set${NgtcUtils.capitalize(type)}`;
         return {
             copy: ({ x, y, z }: THREE.Vector3 | THREE.Euler) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker[op]({ props: [x, y, z], uuid });
             },
             set: (x: number, y: number, z: number) => {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker[op]({ props: [x, y, z], uuid });
             },
             get subscribe() {
-                const { subscriptions, worker } = store.get();
+                const { subscriptions, worker } = physicsStore.get();
                 return NgtcUtils.subscribe(bodyRef, worker, subscriptions, type, index);
             },
         };
     };
 
     const makeRemove = (index?: number) => {
-        const { worker } = store.get();
+        const { worker } = physicsStore.get();
         const uuid = NgtcUtils.getUUID(bodyRef, index);
         return () => {
             if (uuid) worker.removeBodies({ uuid: [uuid] });
@@ -362,27 +358,27 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
             angularFactor: makeVec('angularFactor', index),
             angularVelocity: makeVec('angularVelocity', index),
             applyForce(force: Triplet, worldPoint: Triplet) {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.applyForce({ props: [force, worldPoint], uuid });
             },
             applyImpulse(impulse: Triplet, worldPoint: Triplet) {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.applyImpulse({ props: [impulse, worldPoint], uuid });
             },
             applyLocalForce(force: Triplet, localPoint: Triplet) {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.applyLocalForce({ props: [force, localPoint], uuid });
             },
             applyLocalImpulse(impulse: Triplet, localPoint: Triplet) {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.applyLocalImpulse({ props: [impulse, localPoint], uuid });
             },
             applyTorque(torque: Triplet) {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.applyTorque({ props: [torque], uuid });
             },
@@ -400,12 +396,12 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
             remove: makeRemove(index),
             rotation: makeRotation(index),
             scaleOverride(scale) {
-                const { scaleOverrides } = store.get();
+                const { scaleOverrides } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 if (uuid) scaleOverrides[uuid] = new THREE.Vector3(...scale);
             },
             sleep() {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.sleep({ uuid });
             },
@@ -414,7 +410,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
             userData: makeAtomic('userData', index),
             velocity: makeVec('velocity', index),
             wakeUp() {
-                const { worker } = store.get();
+                const { worker } = physicsStore.get();
                 const uuid = NgtcUtils.getUUID(bodyRef, index);
                 uuid && worker.wakeUp({ uuid });
             },
