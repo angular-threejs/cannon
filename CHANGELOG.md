@@ -1,5 +1,17 @@
 
 
+## [1.1.0](https://github.com/angular-threejs/cannon/compare/1.0.0...1.1.0) (2023-01-25)
+
+
+### Features
+
+* add constraints ([65ac4ed](https://github.com/angular-threejs/cannon/commit/65ac4ed77c21a2d659fec8eea13d916f1340e974))
+
+
+### Documentations
+
+* add readme ([604c3f4](https://github.com/angular-threejs/cannon/commit/604c3f43e24249b02a0d4cfbf75e7b1294a93fa9))
+
 ## 1.0.0 (2023-01-24)
 
 
