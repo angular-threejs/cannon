@@ -8,9 +8,10 @@ import {
     LockConstraintOpts,
     PointToPointConstraintOpts,
 } from '@pmndrs/cannon-worker-api';
-import { injectNgtDestroy, injectNgtRef, is, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
+import { injectNgtRef, is, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
-import { combineLatest, isObservable, Observable, of, ReplaySubject, Subscription, takeUntil } from 'rxjs';
+import { combineLatest, Observable, takeUntil } from 'rxjs';
+import { injectOptionsProcessor } from './utils';
 
 export interface NgtcConstraintApi {
     disable: () => void;
@@ -114,36 +115,21 @@ function injectConstraint<
     bodyB: NgtInjectedRef<TObjectB> | TObjectB,
     optsFn: NgtcOptsFunction<TConstraintType, TOptions> = () => ({} as TOptions)
 ): NgtcConstraintReturn<TConstraintType, TObjectA, TObjectB> {
+    const { opts$, destroy$ } = injectOptionsProcessor(optsFn);
     const uuid = makeId();
-    const optsSubject = new ReplaySubject<TOptions>(1);
-    let subscription: Subscription | undefined = undefined;
 
     const physicsStore = inject(NgtcStore, { skipSelf: true });
-    const { destroy$ } = injectNgtDestroy(() => {
-        optsSubject.complete();
-        subscription?.unsubscribe();
-    });
 
     const bodyARef = !is.ref(bodyA) ? injectNgtRef(bodyA) : bodyA;
     const bodyBRef = !is.ref(bodyB) ? injectNgtRef(bodyB) : bodyB;
 
-    queueMicrotask(() => {
-        const opts = optsFn();
-        (isObservable(opts) ? opts : of(opts)).pipe(takeUntil(destroy$)).subscribe({
-            next: optsSubject.next.bind(optsSubject),
-            error: (error) => {
-                console.error(`[NGT Cannon] Error processing props for injectConstraint`, error);
-                optsSubject.error(error);
-            },
-        });
-    });
-
-    subscription = combineLatest([physicsStore.select('worker'), bodyARef.$, bodyBRef.$, optsSubject])
+    combineLatest([physicsStore.select('worker'), bodyARef.$, bodyBRef.$, opts$])
         .pipe(
             tapEffect(([worker, bodyA, bodyB, opts]) => {
                 worker.addConstraint({ props: [bodyA.uuid, bodyB.uuid, opts], type, uuid });
                 return () => worker.removeConstraint({ uuid });
-            })
+            }),
+            takeUntil(destroy$)
         )
         .subscribe();
 
