@@ -202,76 +202,78 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     combineLatest(waits$).subscribe(() => (bodyRef.nativeElement ||= new THREE.Object3D() as TObject));
 
     // start the pipeline as soon as bodyRef has a truthy value
-    subscription = bodyRef.$.pipe(
-        switchMap((object) => {
-            const { events, refs, worker } = physicsStore.get();
+    subscription = combineLatest([physicsStore.select('worker'), bodyRef.$])
+        .pipe(
+            switchMap(([worker, object]) => {
+                const currentWorker = worker;
 
-            const currentWorker = worker;
-            let objectCount = 1;
+                const { events, refs } = physicsStore.get();
+                let objectCount = 1;
 
-            if (object instanceof THREE.InstancedMesh) {
-                object.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-                objectCount = object.count;
-            }
+                if (object instanceof THREE.InstancedMesh) {
+                    object.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    objectCount = object.count;
+                }
 
-            // consolidate our uuids into an Array so we can handle them in a more consistent way
-            const uuids =
-                object instanceof THREE.InstancedMesh
-                    ? new Array(objectCount).fill(0).map((_, i) => `${object.uuid}/${i}`)
-                    : [object.uuid];
+                // consolidate our uuids into an Array so we can handle them in a more consistent way
+                const uuids =
+                    object instanceof THREE.InstancedMesh
+                        ? new Array(objectCount).fill(0).map((_, i) => `${object.uuid}/${i}`)
+                        : [object.uuid];
 
-            // construct an Array<Observable> from getPropsFn
-            // so we can react to props changed
-            const propsList$ = uuids.map((uuid, index) => {
-                const propsResult = getPropsFn(index);
-                // TODO  we use a propsSubject$ because we want to ensure this propsResult stream is HOT
-                // otherwise, tapEffect will remove everything from currentWorker#bodies because the stream completes
-                (isObservable(propsResult) ? propsResult : of(propsResult)).subscribe({
-                    next: (props) => {
-                        NgtcUtils.prepare(temp, props);
-                        if (object instanceof THREE.InstancedMesh) {
-                            object.setMatrixAt(index, temp.matrix);
-                            object.instanceMatrix.needsUpdate = true;
-                        }
-                        refs[uuid] = object;
-                        debugApi?.add(uuid, props, type);
-                        NgtcUtils.setupCollision(events, props, uuid);
-                        propsSubject$.next({ ...props, args: argsFn(props.args) });
-                    },
-                    error: (error) => {
-                        console.error(`[NGT Cannon] Error with processing props: ${error}`);
-                        propsSubject$.error(error);
-                    },
+                // construct an Array<Observable> from getPropsFn
+                // so we can react to props changed
+                const propsList$ = uuids.map((uuid, index) => {
+                    const propsResult = getPropsFn(index);
+                    // TODO  we use a propsSubject$ because we want to ensure this propsResult stream is HOT
+                    // otherwise, tapEffect will remove everything from currentWorker#bodies because the stream completes
+                    (isObservable(propsResult) ? propsResult : of(propsResult)).subscribe({
+                        next: (props) => {
+                            NgtcUtils.prepare(temp, props);
+                            if (object instanceof THREE.InstancedMesh) {
+                                object.setMatrixAt(index, temp.matrix);
+                                object.instanceMatrix.needsUpdate = true;
+                            }
+                            refs[uuid] = object;
+                            debugApi?.add(uuid, props, type);
+                            NgtcUtils.setupCollision(events, props, uuid);
+                            propsSubject$.next({ ...props, args: argsFn(props.args) });
+                        },
+                        error: (error) => {
+                            console.error(`[NGT Cannon] Error with processing props: ${error}`);
+                            propsSubject$.error(error);
+                        },
+                    });
+
+                    return propsSubject$;
                 });
 
-                return propsSubject$;
-            });
-
-            return combineLatest(propsList$).pipe(
-                tapEffect((props) => {
-                    currentWorker.addBodies({
-                        props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
-                            onCollide: Boolean(onCollide),
-                            onCollideBegin: Boolean(onCollideBegin),
-                            onCollideEnd: Boolean(onCollideEnd),
-                            ...serializableProps,
-                        })),
-                        type,
-                        uuid: uuids,
-                    });
-                    // clean up CannonWorker whenever props changes/completes
-                    return () => {
-                        uuids.forEach((uuid) => {
-                            delete refs[uuid];
-                            debugApi?.remove(uuid);
-                            delete events[uuid];
+                return combineLatest(propsList$).pipe(
+                    tapEffect((props) => {
+                        currentWorker.addBodies({
+                            props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
+                                onCollide: Boolean(onCollide),
+                                onCollideBegin: Boolean(onCollideBegin),
+                                onCollideEnd: Boolean(onCollideEnd),
+                                ...serializableProps,
+                            })),
+                            type,
+                            uuid: uuids,
                         });
-                        currentWorker.removeBodies({ uuid: uuids });
-                    };
-                })
-            );
-        })
-    ).subscribe();
+                        // clean up CannonWorker whenever props changes/completes
+                        return () => {
+                            uuids.forEach((uuid) => {
+                                delete refs[uuid];
+                                debugApi?.remove(uuid);
+                                delete events[uuid];
+                            });
+                            currentWorker.removeBodies({ uuid: uuids });
+                        };
+                    })
+                );
+            })
+        )
+        .subscribe();
 
     const makeAtomic = <T extends AtomicName>(type: T, index?: number) => {
         const op: SetOpName<T> = `set${NgtcUtils.capitalize(type)}`;
