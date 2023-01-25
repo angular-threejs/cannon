@@ -1,5 +1,14 @@
 
 
+## [1.2.0](https://github.com/angular-threejs/cannon/compare/1.1.0...1.2.0) (2023-01-25)
+
+
+### Features
+
+* add contact material ([eeceddc](https://github.com/angular-threejs/cannon/commit/eeceddcb0f3f246cd9cf4b11f9ac997269f7ebc7))
+* add ray ([85c864a](https://github.com/angular-threejs/cannon/commit/85c864a5c17a681caa7ad8f3a8a4e8042a108900))
+* add raycast-vehicle and spring ([ee93772](https://github.com/angular-threejs/cannon/commit/ee93772a513f55888685fe639ad96aca9d2de231))
+
 ## [1.1.0](https://github.com/angular-threejs/cannon/compare/1.0.0...1.1.0) (2023-01-25)
 
 
