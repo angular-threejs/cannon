@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import type {
+import {
     CannonWorkerAPI,
     CannonWorkerProps,
     CollideBeginEvent,

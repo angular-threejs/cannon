@@ -171,7 +171,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     const microQueue$ = new ReplaySubject<void>(1);
     // a ReplaySubject that would emit whenever our props emits. This is done so that the consumers can pass in
     // Observable to injectBody if they have reactive props (eg: Input)
-    const propsSubject$ = new ReplaySubject<TBodyProps>(1);
+    const propsSubjectList = [] as ReplaySubject<TBodyProps>[];
 
     // an array of streams we want to wait to emit until we decide to give the bodyRef an empty Object3D
     const waits$ = [microQueue$] as Observable<unknown>[];
@@ -182,7 +182,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     // clean up our streams on destroy
     injectNgtDestroy(() => {
         microQueue$.complete();
-        propsSubject$.complete();
+        propsSubjectList.forEach((sub) => sub.complete());
         subscription?.unsubscribe();
     });
 
@@ -224,6 +224,10 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                 // construct an Array<Observable> from getPropsFn
                 // so we can react to props changed
                 const propsList$ = uuids.map((uuid, index) => {
+                    if (propsSubjectList[index]) {
+                        propsSubjectList[index].complete();
+                    }
+                    propsSubjectList[index] = new ReplaySubject<TBodyProps>(1);
                     const propsResult = getPropsFn(index);
                     // TODO  we use a propsSubject$ because we want to ensure this propsResult stream is HOT
                     // otherwise, tapEffect will remove everything from currentWorker#bodies because the stream completes
@@ -237,15 +241,15 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                             refs[uuid] = object;
                             debugApi?.add(uuid, props, type);
                             NgtcUtils.setupCollision(events, props, uuid);
-                            propsSubject$.next({ ...props, args: argsFn(props.args) });
+                            propsSubjectList[index].next({ ...props, args: argsFn(props.args) });
                         },
                         error: (error) => {
                             console.error(`[NGT Cannon] Error with processing props: ${error}`);
-                            propsSubject$.error(error);
+                            propsSubjectList[index].error(error);
                         },
                     });
 
-                    return propsSubject$;
+                    return propsSubjectList[index];
                 });
 
                 return combineLatest(propsList$).pipe(

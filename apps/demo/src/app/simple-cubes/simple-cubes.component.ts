@@ -9,9 +9,9 @@ import { injectBox, injectPlane } from 'angular-three-cannon/services';
     selector: 'floor',
     standalone: true,
     template: `
-        <ngt-mesh [ref]="plane.ref" [receiveShadow]="true">
+        <ngt-mesh [ref]="plane.ref" [receiveShadow]="true" [position]="position" [rotation]="rotation">
             <ngt-plane-geometry *args="args" />
-            <ngt-shadow-material transparent color="#171717" opacity="0.4" />
+            <ngt-shadow-material [transparent]="true" color="#171717" [opacity]="0.4" />
         </ngt-mesh>
     `,
     imports: [NgtArgs],
@@ -33,7 +33,13 @@ export class Floor {
     selector: 'cube',
     standalone: true,
     template: `
-        <ngt-mesh [ref]="box.ref" [receiveShadow]="true" [castShadow]="true">
+        <ngt-mesh
+            [ref]="box.ref"
+            [position]="position"
+            [rotation]="rotation"
+            [receiveShadow]="true"
+            [castShadow]="true"
+        >
             <ngt-box-geometry />
             <ngt-mesh-lambert-material color="hotpink" />
         </ngt-mesh>
@@ -57,12 +63,10 @@ export class Cube {
         </ngt-directional-light>
 
         <ngtc-physics>
-            <ngtc-debug>
-                <floor [position]="[0, -2.5, 0]" />
-                <cube [position]="[0.1, 5, 0]" />
-                <cube [position]="[0, 10, -1]" />
-                <cube [position]="[0, 20, -2]" />
-            </ngtc-debug>
+            <floor [position]="[0, -2.5, 0]" />
+            <cube [position]="[0.1, 5, 0]" />
+            <cube [position]="[0, 10, -1]" />
+            <cube [position]="[0, 20, -2]" />
         </ngtc-physics>
     `,
     imports: [NgtcPhysics, NgtcDebug, NgtArgs, Floor, Cube],
