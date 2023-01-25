@@ -1,5 +1,12 @@
 
 
+### [1.2.1](https://github.com/angular-threejs/cannon/compare/1.2.0...1.2.1) (2023-01-25)
+
+
+### Bug Fixes
+
+* use propsSubjectList instead ([464680d](https://github.com/angular-threejs/cannon/commit/464680d541398dded63619ba21ca167de2ebbe25))
+
 ## [1.2.0](https://github.com/angular-threejs/cannon/compare/1.1.0...1.2.0) (2023-01-25)
 
 
