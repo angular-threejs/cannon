@@ -1,4 +1,3 @@
-import { NgtInjectedRef } from 'angular-three';
 import type {
     BodyProps,
     CannonWorkerAPI,
@@ -9,8 +8,9 @@ import type {
     SubscriptionTarget,
     Triplet,
 } from '@pmndrs/cannon-worker-api';
-import type { NgtcEvents } from './store';
+import { NgtInjectedRef } from 'angular-three';
 import * as THREE from 'three';
+import type { NgtcEvents } from './store';
 
 export class NgtcUtils {
     static incrementingId = 0;
