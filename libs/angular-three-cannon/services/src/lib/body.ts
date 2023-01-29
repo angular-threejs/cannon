@@ -24,7 +24,7 @@ import {
 import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
-import { combineLatest, isObservable, Observable, of, ReplaySubject, Subscription, switchMap } from 'rxjs';
+import { combineLatest, Observable, ReplaySubject, Subscription } from 'rxjs';
 import * as THREE from 'three';
 
 export type NgtcAtomicApi<K extends AtomicName> = {
@@ -71,7 +71,7 @@ export interface NgtcBodyReturn<TObject extends THREE.Object3D> {
     api: NgtcBodyPublicApi;
 }
 
-export type NgtcGetByIndex<T extends BodyProps> = (index: number) => T | Observable<T>;
+export type NgtcGetByIndex<T extends BodyProps> = (index: number) => T;
 export type NgtcArgFn<T> = (args: T) => unknown[];
 
 export function injectPlane<TObject extends THREE.Object3D>(
@@ -204,7 +204,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     // start the pipeline as soon as bodyRef has a truthy value
     subscription = combineLatest([physicsStore.select('worker'), bodyRef.$])
         .pipe(
-            switchMap(([worker, object]) => {
+            tapEffect(([worker, object]) => {
                 const currentWorker = worker;
 
                 const { events, refs } = physicsStore.get();
@@ -221,60 +221,38 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
                         ? new Array(objectCount).fill(0).map((_, i) => `${object.uuid}/${i}`)
                         : [object.uuid];
 
-                // construct an Array<Observable> from getPropsFn
-                // so we can react to props changed
-                const propsList$ = uuids.map((uuid, index) => {
-                    if (propsSubjectList[index]) {
-                        propsSubjectList[index].complete();
-                    }
-                    propsSubjectList[index] = new ReplaySubject<TBodyProps>(1);
+                const propsList = uuids.map((uuid, index) => {
                     const propsResult = getPropsFn(index);
-                    // TODO  we use a propsSubject$ because we want to ensure this propsResult stream is HOT
-                    // otherwise, tapEffect will remove everything from currentWorker#bodies because the stream completes
-                    (isObservable(propsResult) ? propsResult : of(propsResult)).subscribe({
-                        next: (props) => {
-                            NgtcUtils.prepare(temp, props);
-                            if (object instanceof THREE.InstancedMesh) {
-                                object.setMatrixAt(index, temp.matrix);
-                                object.instanceMatrix.needsUpdate = true;
-                            }
-                            refs[uuid] = object;
-                            debugApi?.add(uuid, props, type);
-                            NgtcUtils.setupCollision(events, props, uuid);
-                            propsSubjectList[index].next({ ...props, args: argsFn(props.args) });
-                        },
-                        error: (error) => {
-                            console.error(`[NGT Cannon] Error with processing props: ${error}`);
-                            propsSubjectList[index].error(error);
-                        },
-                    });
-
-                    return propsSubjectList[index];
+                    NgtcUtils.prepare(temp, propsResult);
+                    if (object instanceof THREE.InstancedMesh) {
+                        object.setMatrixAt(index, temp.matrix);
+                        object.instanceMatrix.needsUpdate = true;
+                    }
+                    refs[uuid] = object;
+                    debugApi?.add(uuid, propsResult, type);
+                    NgtcUtils.setupCollision(events, propsResult, uuid);
+                    return { ...propsResult, args: argsFn(propsResult.args) };
                 });
 
-                return combineLatest(propsList$).pipe(
-                    tapEffect((props) => {
-                        currentWorker.addBodies({
-                            props: props.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
-                                onCollide: Boolean(onCollide),
-                                onCollideBegin: Boolean(onCollideBegin),
-                                onCollideEnd: Boolean(onCollideEnd),
-                                ...serializableProps,
-                            })),
-                            type,
-                            uuid: uuids,
-                        });
-                        // clean up CannonWorker whenever props changes/completes
-                        return () => {
-                            uuids.forEach((uuid) => {
-                                delete refs[uuid];
-                                debugApi?.remove(uuid);
-                                delete events[uuid];
-                            });
-                            currentWorker.removeBodies({ uuid: uuids });
-                        };
-                    })
-                );
+                currentWorker.addBodies({
+                    props: propsList.map(({ onCollide, onCollideBegin, onCollideEnd, ...serializableProps }) => ({
+                        onCollide: Boolean(onCollide),
+                        onCollideBegin: Boolean(onCollideBegin),
+                        onCollideEnd: Boolean(onCollideEnd),
+                        ...serializableProps,
+                    })),
+                    type,
+                    uuid: uuids,
+                });
+
+                return () => {
+                    uuids.forEach((uuid) => {
+                        delete refs[uuid];
+                        debugApi?.remove(uuid);
+                        delete events[uuid];
+                    });
+                    currentWorker.removeBodies({ uuid: uuids });
+                };
             })
         )
         .subscribe();

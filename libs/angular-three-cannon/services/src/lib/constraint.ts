@@ -8,10 +8,9 @@ import {
     LockConstraintOpts,
     PointToPointConstraintOpts,
 } from '@pmndrs/cannon-worker-api';
-import { injectNgtRef, is, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
+import { injectNgtDestroy, injectNgtRef, is, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
-import { combineLatest, Observable, takeUntil } from 'rxjs';
-import { injectOptionsProcessor } from './utils';
+import { combineLatest, takeUntil } from 'rxjs';
 
 export interface NgtcConstraintApi {
     disable: () => void;
@@ -45,7 +44,7 @@ export type NgtcOptsFunction<
     TOptions extends HingeConstraintOpts | ConstraintOptns = TConstraintType extends 'Hinge'
         ? HingeConstraintOpts
         : ConstraintOptns
-> = () => Observable<TOptions> | TOptions;
+> = () => TOptions;
 
 export function injectPointToPointConstraint<
     TObjectA extends THREE.Object3D = THREE.Object3D,
@@ -115,7 +114,7 @@ function injectConstraint<
     bodyB: NgtInjectedRef<TObjectB> | TObjectB,
     optsFn: NgtcOptsFunction<TConstraintType, TOptions> = () => ({} as TOptions)
 ): NgtcConstraintReturn<TConstraintType, TObjectA, TObjectB> {
-    const { opts$, destroy$ } = injectOptionsProcessor(optsFn);
+    const { destroy$ } = injectNgtDestroy();
     const uuid = makeId();
 
     const physicsStore = inject(NgtcStore, { skipSelf: true });
@@ -123,9 +122,10 @@ function injectConstraint<
     const bodyARef = !is.ref(bodyA) ? injectNgtRef(bodyA) : bodyA;
     const bodyBRef = !is.ref(bodyB) ? injectNgtRef(bodyB) : bodyB;
 
-    combineLatest([physicsStore.select('worker'), bodyARef.$, bodyBRef.$, opts$])
+    combineLatest([physicsStore.select('worker'), bodyARef.$, bodyBRef.$])
         .pipe(
-            tapEffect(([worker, bodyA, bodyB, opts]) => {
+            tapEffect(([worker, bodyA, bodyB]) => {
+                const opts = optsFn();
                 worker.addConstraint({ props: [bodyA.uuid, bodyB.uuid, opts], type, uuid });
                 return () => worker.removeConstraint({ uuid });
             }),

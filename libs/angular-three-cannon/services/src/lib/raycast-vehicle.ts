@@ -3,7 +3,7 @@ import { WheelInfoOptions } from '@pmndrs/cannon-worker-api';
 import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { combineLatest, takeUntil } from 'rxjs';
-import { Object3D } from 'three';
+import * as THREE from 'three';
 
 export interface NgtcRaycastVehicleProps {
     chassisBody: NgtInjectedRef<THREE.Object3D>;
@@ -36,44 +36,42 @@ export function injectRaycastVehicle<TObject extends THREE.Object3D = THREE.Obje
 
     let ref = injectNgtRef<TObject>();
 
-    if (instanceRef) {
-        ref = instanceRef;
-    }
+    if (instanceRef) ref = instanceRef;
 
     queueMicrotask(() => {
-        if (!ref.nativeElement) {
-            ref.nativeElement = new Object3D() as TObject;
-        }
+        if (!ref.nativeElement) ref.nativeElement = new THREE.Object3D() as TObject;
     });
 
-    const { chassisBody, indexForwardAxis = 2, indexRightAxis = 0, indexUpAxis = 1, wheelInfos, wheels } = fn();
+    queueMicrotask(() => {
+        const { chassisBody, indexForwardAxis = 2, indexRightAxis = 0, indexUpAxis = 1, wheelInfos, wheels } = fn();
 
-    combineLatest([store.select('worker'), ref.$, chassisBody.$, ...wheels.map((wheel) => wheel.$)])
-        .pipe(
-            tapEffect(([worker, object]) => {
-                const uuid = object.uuid;
-                const chassisBodyUUID = NgtcUtils.getUUID(chassisBody);
-                const wheelUUIDs = wheels.map((wheel) => NgtcUtils.getUUID(wheel));
+        combineLatest([store.select('worker'), ref.$, chassisBody.$, ...wheels.map((wheel) => wheel.$)])
+            .pipe(
+                tapEffect(([worker, object]) => {
+                    const uuid = object.uuid;
+                    const chassisBodyUUID = NgtcUtils.getUUID(chassisBody);
+                    const wheelUUIDs = wheels.map((wheel) => NgtcUtils.getUUID(wheel));
 
-                if (!chassisBodyUUID || !wheelUUIDs.every((v) => typeof v === 'string')) return;
+                    if (!chassisBodyUUID || !wheelUUIDs.every((v) => typeof v === 'string')) return;
 
-                worker.addRaycastVehicle({
-                    props: [
-                        chassisBodyUUID,
-                        wheelUUIDs as string[],
-                        wheelInfos,
-                        indexForwardAxis,
-                        indexRightAxis,
-                        indexUpAxis,
-                    ],
-                    uuid,
-                });
+                    worker.addRaycastVehicle({
+                        props: [
+                            chassisBodyUUID,
+                            wheelUUIDs as string[],
+                            wheelInfos,
+                            indexForwardAxis,
+                            indexRightAxis,
+                            indexUpAxis,
+                        ],
+                        uuid,
+                    });
 
-                return () => worker.removeRaycastVehicle({ uuid });
-            }),
-            takeUntil(destroy$)
-        )
-        .subscribe();
+                    return () => worker.removeRaycastVehicle({ uuid });
+                }),
+                takeUntil(destroy$)
+            )
+            .subscribe();
+    });
 
     const api = {
         applyEngineForce: (value: number, wheelIndex: number) => {

@@ -1,9 +1,8 @@
 import { inject } from '@angular/core';
 import { SpringOptns } from '@pmndrs/cannon-worker-api';
-import { makeId, NgtInjectedRef, tapEffect } from 'angular-three';
+import { injectNgtDestroy, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
-import { combineLatest, Observable, takeUntil } from 'rxjs';
-import { injectOptionsProcessor } from './utils';
+import { combineLatest, takeUntil } from 'rxjs';
 
 export interface NgtcSpringApi {
     setDamping: (value: number) => void;
@@ -27,15 +26,16 @@ export function injectSpring<
 >(
     bodyA: NgtInjectedRef<TObjectA>,
     bodyB: NgtInjectedRef<TObjectB>,
-    optsFn: () => Observable<SpringOptns> | SpringOptns
+    optsFn: () => SpringOptns
 ): NgtcSpringReturn<TObjectA, TObjectB> {
     const store = inject(NgtcStore, { skipSelf: true });
     const uuid = makeId();
-    const { opts$, destroy$ } = injectOptionsProcessor(optsFn);
+    const { destroy$ } = injectNgtDestroy();
 
-    combineLatest([store.select('worker'), bodyA.$, bodyB.$, opts$])
+    combineLatest([store.select('worker'), bodyA.$, bodyB.$])
         .pipe(
-            tapEffect(([worker, bodyA, bodyB, opts]) => {
+            tapEffect(([worker, bodyA, bodyB]) => {
+                const opts = optsFn();
                 worker.addSpring({ props: [bodyA.uuid, bodyB.uuid, opts], uuid });
                 return () => worker.removeSpring({ uuid });
             }),

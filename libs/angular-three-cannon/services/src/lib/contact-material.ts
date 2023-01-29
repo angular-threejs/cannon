@@ -1,23 +1,24 @@
 import { inject } from '@angular/core';
 import { ContactMaterialOptions, MaterialOptions } from '@pmndrs/cannon-worker-api';
-import { makeId, tapEffect } from 'angular-three';
+import { injectNgtDestroy, makeId, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
-import { combineLatest, Observable, takeUntil } from 'rxjs';
-import { injectOptionsProcessor } from './utils';
+import { takeUntil } from 'rxjs';
 
 export function injectContactMaterial(
     materialA: MaterialOptions,
     materialB: MaterialOptions,
-    optionsFn: () => Observable<ContactMaterialOptions> | ContactMaterialOptions
+    optionsFn: () => ContactMaterialOptions
 ) {
-    const { opts$, destroy$ } = injectOptionsProcessor(optionsFn);
+    const { destroy$ } = injectNgtDestroy();
 
     const physicsStore = inject(NgtcStore, { skipSelf: true });
     const uuid = makeId();
 
-    combineLatest([physicsStore.select('worker'), opts$])
+    physicsStore
+        .select('worker')
         .pipe(
-            tapEffect(([worker, options]) => {
+            tapEffect((worker) => {
+                const options = optionsFn();
                 worker.addContactMaterial({ props: [materialA, materialB, options], uuid });
                 return () => worker.removeContactMaterial({ uuid });
             }),
