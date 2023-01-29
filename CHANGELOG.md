@@ -1,5 +1,17 @@
 
 
+### [1.2.2](https://github.com/angular-threejs/cannon/compare/1.2.1...1.2.2) (2023-01-29)
+
+
+### Bug Fixes
+
+* remove Observable from options function ([f525124](https://github.com/angular-threejs/cannon/commit/f5251245599c8f50feed5de29c8861014b0e0306))
+
+
+### Documentations
+
+* start compound body (investigate to see if use-cannon hooks reacts on props change) ([c4ae8ab](https://github.com/angular-threejs/cannon/commit/c4ae8abb8ab8ba31023d0acaa532c5869b4eae72))
+
 ### [1.2.1](https://github.com/angular-threejs/cannon/compare/1.2.0...1.2.1) (2023-01-25)
 
 
