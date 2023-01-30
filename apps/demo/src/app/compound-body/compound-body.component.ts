@@ -81,20 +81,16 @@ export class CompoundBody extends NgtRxStore implements OnInit {
 
     ngOnInit() {
         this.effect(this.compound.ref.$, () => {
-            let positionSub: () => void;
-            let rotationSub: () => void;
-
-            if (this.positionChange.observed) {
-                positionSub = this.compound.api.position.subscribe(this.positionChange.emit.bind(this.positionChange));
-            }
-
-            if (this.rotationChange.observed) {
-                rotationSub = this.compound.api.rotation.subscribe(this.rotationChange.emit.bind(this.rotationChange));
-            }
+            const positionSub = this.compound.api.position.subscribe(
+                this.positionChange.emit.bind(this.positionChange)
+            );
+            const rotationSub = this.compound.api.rotation.subscribe(
+                this.rotationChange.emit.bind(this.rotationChange)
+            );
 
             return () => {
-                positionSub?.();
-                rotationSub?.();
+                positionSub();
+                rotationSub();
             };
         });
     }

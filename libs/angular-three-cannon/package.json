@@ -1,6 +1,27 @@
 {
     "name": "angular-three-cannon",
     "version": "0.0.0-replace",
+    "publishConfig": {
+        "access": "public"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/angular-threejs/cannon"
+    },
+    "author": {
+        "name": "Chau Tran",
+        "email": "nartc7789@gmail.com",
+        "url": "https://nartc.me"
+    },
+    "description": "Cannon.js physics integration with Angular Three",
+    "keywords": [
+        "angular",
+        "threejs",
+        "renderer",
+        "cannonjs",
+        "physics"
+    ],
+    "license": "MIT",
     "peerDependencies": {
         "@angular/common": "^15.1.0",
         "@angular/core": "^15.1.0",

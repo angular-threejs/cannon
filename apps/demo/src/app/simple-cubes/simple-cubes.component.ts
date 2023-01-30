@@ -63,10 +63,12 @@ export class Cube {
         </ngt-directional-light>
 
         <ngtc-physics>
-            <floor [position]="[0, -2.5, 0]" />
-            <cube [position]="[0.1, 5, 0]" />
-            <cube [position]="[0, 10, -1]" />
-            <cube [position]="[0, 20, -2]" />
+            <ngtc-debug>
+                <floor [position]="[0, -2.5, 0]" />
+                <cube [position]="[0.1, 5, 0]" />
+                <cube [position]="[0, 10, -1]" />
+                <cube [position]="[0, 20, -2]" />
+            </ngtc-debug>
         </ngtc-physics>
     `,
     imports: [NgtcPhysics, NgtcDebug, NgtArgs, Floor, Cube],
