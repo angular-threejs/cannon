@@ -1,5 +1,17 @@
 
 
+### [1.2.3](https://github.com/angular-threejs/cannon/compare/1.2.2...1.2.3) (2023-01-31)
+
+
+### Bug Fixes
+
+* remove options queue concept as we do not need it anymore ([248b51b](https://github.com/angular-threejs/cannon/commit/248b51bd7905c60b22b6adeb458d07671639937a))
+
+
+### Documentations
+
+* clean up demo ([6c39827](https://github.com/angular-threejs/cannon/commit/6c398278089d884bde99439afae18582ec08afc4))
+
 ### [1.2.2](https://github.com/angular-threejs/cannon/compare/1.2.1...1.2.2) (2023-01-29)
 
 
