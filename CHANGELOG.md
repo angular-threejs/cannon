@@ -1,5 +1,12 @@
 
 
+## [1.3.0](https://github.com/angular-threejs/cannon/compare/1.2.3...1.3.0) (2023-02-05)
+
+
+### Features
+
+* up peer dep ([0c7ca63](https://github.com/angular-threejs/cannon/commit/0c7ca63b0427f5a8575a6a3bdef31d99c4a1aa82))
+
 ### [1.2.3](https://github.com/angular-threejs/cannon/compare/1.2.2...1.2.3) (2023-01-31)
 
 
