@@ -1,5 +1,12 @@
 
 
+## [1.4.0-beta.0](https://github.com/angular-threejs/cannon/compare/1.3.0...1.4.0-beta.0) (2023-02-08)
+
+
+### Features
+
+* clean up wait$ mechanism ([3bf38c4](https://github.com/angular-threejs/cannon/commit/3bf38c49eccbbe3a97c8b7b3802c72cb731cd331))
+
 ## [1.3.0](https://github.com/angular-threejs/cannon/compare/1.2.3...1.3.0) (2023-02-05)
 
 
