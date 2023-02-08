@@ -1,5 +1,12 @@
 
 
+### [1.4.1](https://github.com/angular-threejs/cannon/compare/1.4.0...1.4.1) (2023-02-08)
+
+
+### Bug Fixes
+
+* clean up body ([1e5baa7](https://github.com/angular-threejs/cannon/commit/1e5baa7a362dd01f17607225e5b4386e36e3d6dd))
+
 ## [1.4.0](https://github.com/angular-threejs/cannon/compare/1.4.0-beta.0...1.4.0) (2023-02-08)
 
 ## [1.4.0-beta.0](https://github.com/angular-threejs/cannon/compare/1.3.0...1.4.0-beta.0) (2023-02-08)
