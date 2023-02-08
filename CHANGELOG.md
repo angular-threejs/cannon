@@ -1,5 +1,12 @@
 
 
+## [1.5.0](https://github.com/angular-threejs/cannon/compare/1.4.1...1.5.0) (2023-02-08)
+
+
+### Features
+
+* upgrade angular-three ([75e29ab](https://github.com/angular-threejs/cannon/commit/75e29ab5b6d8260c9901ab8b4c038e4c69c61df3))
+
 ### [1.4.1](https://github.com/angular-threejs/cannon/compare/1.4.0...1.4.1) (2023-02-08)
 
 
