@@ -167,21 +167,15 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
 ): NgtcBodyReturn<TObject> {
     let subscription: Subscription | undefined = undefined;
 
-    // a ReplaySubject that would emit once in queueMicrotask call
-    const microQueue$ = new ReplaySubject<void>(1);
     // a ReplaySubject that would emit whenever our props emits. This is done so that the consumers can pass in
     // Observable to injectBody if they have reactive props (eg: Input)
     const propsSubjectList = [] as ReplaySubject<TBodyProps>[];
-
-    // an array of streams we want to wait to emit until we decide to give the bodyRef an empty Object3D
-    const waits$ = [microQueue$] as Observable<unknown>[];
 
     const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
     const physicsStore = inject(NgtcStore, { skipSelf: true });
 
     // clean up our streams on destroy
     injectNgtDestroy(() => {
-        microQueue$.complete();
         propsSubjectList.forEach((sub) => sub.complete());
         subscription?.unsubscribe();
     });
@@ -189,17 +183,15 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     // give our bodyRef an NgtInjectedRef
     let bodyRef = injectNgtRef<TObject>();
 
-    // add waitFor if the consumers pass it in
-    if (waitFor) waits$.push(waitFor);
     // re-assign bodyRef if the consumers pass a ref in
     if (ref) bodyRef = ref;
 
     // fire microQueue$
-    queueMicrotask(() => microQueue$.next());
-
-    // when all waits$ emit, we give bodyRef an empty Object3D if it doesn't have one. Physic Object can still be affected
-    // by Physics without a visual representation
-    combineLatest(waits$).subscribe(() => (bodyRef.nativeElement ||= new THREE.Object3D() as TObject));
+    queueMicrotask(() => {
+        // waitFor assumes the consumer will be using the bodyRef on the template
+        // with the model (waitFor) as a THREE instance
+        if (!waitFor) bodyRef.nativeElement ||= new THREE.Object3D() as TObject;
+    });
 
     // start the pipeline as soon as bodyRef has a truthy value
     subscription = combineLatest([physicsStore.select('worker'), bodyRef.$])
