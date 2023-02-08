@@ -24,7 +24,7 @@ import {
 import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
-import { combineLatest, Observable, ReplaySubject, Subscription } from 'rxjs';
+import { combineLatest, Observable, Subscription } from 'rxjs';
 import * as THREE from 'three';
 
 export type NgtcAtomicApi<K extends AtomicName> = {
@@ -167,16 +167,11 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
 ): NgtcBodyReturn<TObject> {
     let subscription: Subscription | undefined = undefined;
 
-    // a ReplaySubject that would emit whenever our props emits. This is done so that the consumers can pass in
-    // Observable to injectBody if they have reactive props (eg: Input)
-    const propsSubjectList = [] as ReplaySubject<TBodyProps>[];
-
     const debugApi = inject(NGTC_DEBUG_API, { skipSelf: true, optional: true });
     const physicsStore = inject(NgtcStore, { skipSelf: true });
 
     // clean up our streams on destroy
     injectNgtDestroy(() => {
-        propsSubjectList.forEach((sub) => sub.complete());
         subscription?.unsubscribe();
     });
 
@@ -190,7 +185,9 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     queueMicrotask(() => {
         // waitFor assumes the consumer will be using the bodyRef on the template
         // with the model (waitFor) as a THREE instance
-        if (!waitFor) bodyRef.nativeElement ||= new THREE.Object3D() as TObject;
+        if (!waitFor && !bodyRef.nativeElement) {
+            bodyRef.nativeElement = new THREE.Object3D() as TObject;
+        }
     });
 
     // start the pipeline as soon as bodyRef has a truthy value
