@@ -1,5 +1,12 @@
 
 
+### [1.5.1](https://github.com/angular-threejs/cannon/compare/1.5.0...1.5.1) (2023-02-09)
+
+
+### Bug Fixes
+
+* filter undefined and null from all object refs ([613f0a0](https://github.com/angular-threejs/cannon/commit/613f0a0aaba73240c835bf097671de6d5e40a7d5))
+
 ## [1.5.0](https://github.com/angular-threejs/cannon/compare/1.4.1...1.5.0) (2023-02-08)
 
 
