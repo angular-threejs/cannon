@@ -11,6 +11,7 @@ import {
 import { injectNgtDestroy, injectNgtRef, is, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
 import { combineLatest, takeUntil } from 'rxjs';
+import { filterEmpty } from './utils';
 
 export interface NgtcConstraintApi {
     disable: () => void;
@@ -122,7 +123,7 @@ function injectConstraint<
     const bodyARef = !is.ref(bodyA) ? injectNgtRef(bodyA) : bodyA;
     const bodyBRef = !is.ref(bodyB) ? injectNgtRef(bodyB) : bodyB;
 
-    combineLatest([physicsStore.select('worker'), bodyARef.$, bodyBRef.$])
+    combineLatest([physicsStore.select('worker'), bodyARef.$.pipe(filterEmpty()), bodyBRef.$.pipe(filterEmpty())])
         .pipe(
             tapEffect(([worker, bodyA, bodyB]) => {
                 const opts = optsFn();

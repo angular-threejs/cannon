@@ -3,6 +3,7 @@ import { SpringOptns } from '@pmndrs/cannon-worker-api';
 import { injectNgtDestroy, makeId, NgtInjectedRef, tapEffect } from 'angular-three';
 import { NgtcStore } from 'angular-three-cannon';
 import { combineLatest, takeUntil } from 'rxjs';
+import { filterEmpty } from './utils';
 
 export interface NgtcSpringApi {
     setDamping: (value: number) => void;
@@ -32,7 +33,7 @@ export function injectSpring<
     const uuid = makeId();
     const { destroy$ } = injectNgtDestroy();
 
-    combineLatest([store.select('worker'), bodyA.$, bodyB.$])
+    combineLatest([store.select('worker'), bodyA.$.pipe(filterEmpty()), bodyB.$.pipe(filterEmpty())])
         .pipe(
             tapEffect(([worker, bodyA, bodyB]) => {
                 const opts = optsFn();

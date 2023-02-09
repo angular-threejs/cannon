@@ -4,6 +4,7 @@ import { injectNgtDestroy, injectNgtRef, NgtInjectedRef, tapEffect } from 'angul
 import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { combineLatest, takeUntil } from 'rxjs';
 import * as THREE from 'three';
+import { filterEmpty } from './utils';
 
 export interface NgtcRaycastVehicleProps {
     chassisBody: NgtInjectedRef<THREE.Object3D>;
@@ -45,7 +46,12 @@ export function injectRaycastVehicle<TObject extends THREE.Object3D = THREE.Obje
     queueMicrotask(() => {
         const { chassisBody, indexForwardAxis = 2, indexRightAxis = 0, indexUpAxis = 1, wheelInfos, wheels } = fn();
 
-        combineLatest([store.select('worker'), ref.$, chassisBody.$, ...wheels.map((wheel) => wheel.$)])
+        combineLatest([
+            store.select('worker'),
+            ref.$.pipe(filterEmpty()),
+            chassisBody.$.pipe(filterEmpty()),
+            ...wheels.map((wheel) => wheel.$.pipe(filterEmpty())),
+        ])
             .pipe(
                 tapEffect(([worker, object]) => {
                     const uuid = object.uuid;

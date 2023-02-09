@@ -26,6 +26,7 @@ import { NgtcStore, NgtcUtils } from 'angular-three-cannon';
 import { NGTC_DEBUG_API } from 'angular-three-cannon/debug';
 import { combineLatest, Observable, Subscription } from 'rxjs';
 import * as THREE from 'three';
+import { filterEmpty } from './utils';
 
 export type NgtcAtomicApi<K extends AtomicName> = {
     set: (value: AtomicProps[K]) => void;
@@ -191,7 +192,7 @@ function injectBody<TBodyProps extends BodyProps, TObject extends THREE.Object3D
     });
 
     // start the pipeline as soon as bodyRef has a truthy value
-    subscription = combineLatest([physicsStore.select('worker'), bodyRef.$])
+    subscription = combineLatest([physicsStore.select('worker'), bodyRef.$.pipe(filterEmpty())])
         .pipe(
             tapEffect(([worker, object]) => {
                 const currentWorker = worker;
