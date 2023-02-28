@@ -1,5 +1,12 @@
 
 
+### [1.5.2](https://github.com/angular-threejs/cannon/compare/1.5.1...1.5.2) (2023-02-28)
+
+
+### Bug Fixes
+
+* bump peer dep ([6868700](https://github.com/angular-threejs/cannon/commit/68687000a083e795bb5eafc95b24c5cbd26d3835))
+
 ### [1.5.1](https://github.com/angular-threejs/cannon/compare/1.5.0...1.5.1) (2023-02-09)
 
 
