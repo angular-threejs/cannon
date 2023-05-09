@@ -1,5 +1,13 @@
 
 
+## [1.6.0](https://github.com/angular-threejs/cannon/compare/1.5.2...1.6.0) (2023-05-09)
+
+
+### Features
+
+* ugrade nx ([02734c5](https://github.com/angular-threejs/cannon/commit/02734c5be9c08fab90735ba8383dbf7f2261b623))
+* update angular ([3f2c5e1](https://github.com/angular-threejs/cannon/commit/3f2c5e102a27f82010c917d60a0a685b2b094b28))
+
 ### [1.5.2](https://github.com/angular-threejs/cannon/compare/1.5.1...1.5.2) (2023-02-28)
 
 
