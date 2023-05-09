@@ -1,4 +1,4 @@
-import { addDependenciesToPackageJson, installPackagesTask, logger, readJson, Tree } from '@nrwl/devkit';
+import { addDependenciesToPackageJson, installPackagesTask, logger, readJson, Tree } from '@nx/devkit';
 
 export const ANGULAR_THREE_CANNON_VERSION = '^1.0.0';
 export const CANNON_WORKER_API_VERSION = '^2.3.0';
