@@ -1,5 +1,7 @@
 
 
+### [1.6.2](https://github.com/angular-threejs/cannon/compare/1.6.1...1.6.2) (2023-08-16)
+
 ### [1.6.1](https://github.com/angular-threejs/cannon/compare/1.6.0...1.6.1) (2023-05-19)
 
 ## [1.6.0](https://github.com/angular-threejs/cannon/compare/1.5.2...1.6.0) (2023-05-09)
